@@ -12,7 +12,7 @@ function load() {
     return {};
   }
 }
-const DEFAULTS = () => ({ deck: {}, xp: 0, streak: 0, lastDay: null, days: {}, newPerDay: 30, scope: "core", exam: null });
+const DEFAULTS = () => ({ deck: {}, xp: 0, streak: 0, lastDay: null, days: {}, newPerDay: 30, scope: "core", exam: null, answerMode: "auto" });
 const state = Object.assign(DEFAULTS(), load());
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
@@ -393,24 +393,94 @@ function session(ids, opts = {}) {
   if (!s.queue.length) return reviewTab();
   showCard(s);
 }
-function cardHtml(c, revealed) {
+function cardHtml(c, revealed, qcm = false) {
   const answer = c.html ? `<div class="card-a html rich">${c.a}</div>` : `<div class="card-a">${esc(c.a)}</div>`;
   return `<article class="card" data-lv="${c.lv}">
       <span class="card-kind">${esc(c.label)}</span>
       <div class="card-ctx">${esc(c.ctx || "")}</div>
       <h2 class="card-q">${esc(c.q)}</h2>
-      ${revealed ? `${answer}
+      ${revealed ? `${c.verdict === undefined ? "" : `<div class="verdict ${c.verdict ? "ok" : "ko"}">${icon(c.verdict ? "check" : "x")}${c.verdict ? "Bonne réponse" : "Pas tout à fait : voici la réponse complète"}</div>`}${answer}
         ${c.cite ? `<div class="card-cite"><small>À citer</small>${esc(c.cite)}</div>` : ""}
         ${c.upd ? `<span class="card-upd">Mis à jour ${esc(c.upd)} · à revérifier la veille</span>` : ""}`
-      : `<div class="think">${icon("bulb")}Réponds à voix haute ou dans ta tête, puis vérifie.</div>`}
+      : `<div class="think">${icon("bulb")}${qcm ? "Choisis la bonne proposition." : "Réponds à voix haute ou dans ta tête, puis vérifie."}</div>`}
     </article>`;
 }
+// ---------- QCM ----------
+// Les mauvaises réponses viennent d'autres cartes du même type : de la même fiche si possible,
+// puis de la même partie, puis de tout le programme. Une carte « Portée de : décision » est posée
+// une fois sur deux à l'envers : la portée est donnée, il faut retrouver la décision.
+const ANSWER_MODES = [
+  ["auto", "Progressif", "QCM pour découvrir, puis rappel libre quand la carte est connue (8 j et plus)"],
+  ["qcm", "Toujours QCM", "Quatre propositions à chaque carte"],
+  ["recall", "Rappel libre", "Tu cherches seul, puis tu dis si tu t'en souvenais"],
+];
+const useQcm = (s, id) => {
+  if (s.timed) return false;
+  if (state.answerMode === "qcm") return true;
+  if (state.answerMode === "recall") return false;
+  return (state.deck[id]?.iv || 0) < 8;
+};
+// Proposition courte : la première phrase de la réponse (sans couper après « art. », « n° », « (A. »…),
+// limitée à environ 170 caractères. Pour un plan : les titres des deux parties, sans les sous-parties.
+const ABBR = /(?:\b(?:art|al|arts|n°|p|cf|ss|déc|const|civ|crim|com|soc|Cass|req|ch|plén|ord|réf|sect|Ass|Gde|min|sén|Prot|Conv|C|CE|CJA|CPP|CP|L|R|D|M|Mme|St|vol)|\b[A-Z]|\b[IVX]+|\(\w)$/;
+function firstSentence(t) {
+  const re = /[.;!?](?=\s)/g;
+  let m;
+  while ((m = re.exec(t))) {
+    const head = t.slice(0, m.index);
+    if (head.length < 40) continue;
+    if (t[m.index] === "." && ABBR.test(head)) continue;
+    return t.slice(0, m.index + 1);
+  }
+  return t;
+}
+function gist(c) {
+  let t = stripTags(c.a).replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").split("\n")[0].trim();
+  if (c.k === "plan") {
+    while (/\([^()]*\)/.test(t)) t = t.replace(/\s*\([^()]*\)/g, "");
+    t = t.replace(/\s*\(.*$/, "").replace(/\s+/g, " ");
+  } else t = firstSentence(t);
+  if (t.startsWith("«") && !t.includes("»")) t = t.replace(/^«\s*/, "");
+  if (t.length > 170) t = t.slice(0, 170).replace(/\s+\S*$/, "") + " …";
+  return t;
+}
+const decisionOf = (c) => c.q.replace(/^Portée de : /, "");
+const isDecision = (c) => c.k === "ref" && /^(CE|Cons\. const|Cass|CEDH|CJUE|CJCE|T\. ?confl|TC|CAA|TA|CIJ|CIDH|Cour|Comité|CDH|CPI|Trib)/.test(decisionOf(c));
+function qcmFor(id) {
+  const c = CARDS.get(id);
+  const reverse = isDecision(c) && Math.random() < 0.5;
+  const text = reverse ? decisionOf : gist;
+  const right = text(c);
+  const same = (x) => x.id !== id && x.src === c.src && (c.src !== "cours" || x.k === c.k) && (!reverse || isDecision(x));
+  const pools = c.src === "cours"
+    ? [(x) => x.fiche === c.fiche, (x) => x.lv === c.lv, () => true]
+    : c.src === "jury" ? [(x) => x.chapter === c.chapter, () => true] : [(x) => x.section === c.section, () => true];
+  const wrong = [];
+  const seenTxt = new Set([fold(right)]);
+  for (const pool of pools) {
+    for (const x of shuffle([...CARDS.values()].filter((x) => same(x) && pool(x)))) {
+      if (wrong.length === 3) break;
+      const t = text(x);
+      if (t.length < 4 || seenTxt.has(fold(t))) continue;
+      seenTxt.add(fold(t));
+      wrong.push(t);
+    }
+    if (wrong.length === 3) break;
+  }
+  const choices = shuffle([right, ...wrong]);
+  return {
+    q: reverse ? `Quelle décision a retenu : « ${gist(c).replace(/^«\s*|\s*»$/g, "")} » ?` : c.q,
+    choices, answer: choices.indexOf(right),
+  };
+}
+
 function showCard(s) {
   const id = s.queue[0];
   const c = CARDS.get(id);
   const again = s.relearn.has(id);
   const pct = (s.done / (s.total + s.relearn.size || 1)) * 100;
   const left = s.queue.length;
+  const qcm = useQcm(s, id) ? qcmFor(id) : null;
   render(`
     <div class="ex-top">
       <button class="icon-btn" id="quit" aria-label="Quitter">${icon("x")}</button>
@@ -418,9 +488,10 @@ function showCard(s) {
       <span class="pill">${icon("cards")}${left}</span>
     </div>
     ${s.timed ? `<div class="sim"><small>Temps de réponse</small><div class="clock" id="clock">${mmss(s.timed)}</div></div>` : ""}
-    <div id="card">${cardHtml(c, false)}</div>
+    <div id="card">${qcm ? cardHtml({ ...c, q: qcm.q }, false, true) : cardHtml(c, false)}</div>
+    ${qcm ? `<div class="choices" id="choices">${qcm.choices.map((t, i) => `<button class="choice" data-i="${i}"><span class="k">${"ABCD"[i]}</span><span>${esc(t)}</span></button>`).join("")}</div>` : ""}
     ${again ? `<p class="relearn">${icon("alert")} Carte oubliée tout à l'heure : retrouve-la avant la fin de la séance.</p>` : ""}
-    <div class="dock"><div id="actions"><button class="btn lv" id="reveal">${icon("eye")}Afficher la réponse</button></div></div>
+    <div class="dock"><div id="actions">${qcm ? "" : `<button class="btn lv" id="reveal">${icon("eye")}Afficher la réponse</button>`}</div></div>
   `, { lv: c.lv });
   root.querySelector("#quit").onclick = () => endSession(s, true);
   if (s.timed) {
@@ -433,15 +504,34 @@ function showCard(s) {
       if (t === 0) { el.classList.add("over"); buzz([40, 60, 40]); }
     }, 1000);
   }
+  const deckCard = state.deck[id] || newCard();
+  const when = (g) => (again || s.practice ? "" : fmtDays(Math.min(MAX_DAYS, nextInterval(deckCard, g))));
+  const gradeButtons = (list) => {
+    root.querySelector("#actions").innerHTML = `<div class="grades" style="grid-template-columns:repeat(${list.length},1fr)">${list.map(([g, label]) =>
+      `<button class="grade g-${g}" data-g="${g}">${label}<small>${when(g) || (g === "again" ? "à revoir" : "retrouvée")}</small></button>`).join("")}</div>`;
+    root.querySelectorAll(".grade").forEach((b) => (b.onclick = () => grade(s, id, b.dataset.g)));
+  };
+  if (qcm) {
+    // Bonne réponse : tu dis si tu as hésité (Difficile) ou non (Facile). Mauvaise : la carte est « Oublié ».
+    root.querySelectorAll(".choice").forEach((b) => (b.onclick = () => {
+      const ok = +b.dataset.i === qcm.answer;
+      root.querySelectorAll(".choice").forEach((x) => { x.disabled = true; });
+      root.querySelector(`.choice[data-i="${qcm.answer}"]`).classList.add("right");
+      if (!ok) b.classList.add("wrong");
+      buzz(ok ? 15 : [30, 50, 30]);
+      root.querySelector("#card").innerHTML = cardHtml({ ...c, verdict: ok }, true);
+      if (ok) gradeButtons(GRADES.filter(([g]) => g !== "again"));
+      else root.querySelector("#actions").innerHTML = `<button class="btn" id="next">${icon("chevron")}Continuer${when("again") ? ` · la carte revient ${when("again")}` : ""}</button>`;
+      root.querySelector("#next")?.addEventListener("click", () => grade(s, id, "again"));
+      root.querySelector("#choices").scrollIntoView({ block: "start", behavior: "smooth" });
+    }));
+    return;
+  }
   root.querySelector("#reveal").onclick = () => {
     stopTimer();
     buzz(10);
     root.querySelector("#card").innerHTML = cardHtml(c, true);
-    const deckCard = state.deck[id] || newCard();
-    const pick = (g) => (again || s.practice ? "" : fmtDays(Math.min(MAX_DAYS, nextInterval(deckCard, g))));
-    root.querySelector("#actions").innerHTML = `<div class="grades">${GRADES.map(([g, label]) =>
-      `<button class="grade g-${g}" data-g="${g}">${label}<small>${pick(g) || (g === "again" ? "à revoir" : "retrouvée")}</small></button>`).join("")}</div>`;
-    root.querySelectorAll(".grade").forEach((b) => (b.onclick = () => grade(s, id, b.dataset.g)));
+    gradeButtons(GRADES);
   };
 }
 function grade(s, id, g) {
@@ -850,6 +940,8 @@ function profile() {
     <h4 class="section-title">${icon("cards")}Nouvelles cartes par jour</h4>
     <div class="opts">${PACES.map((n) => `<button class="opt ${n === state.newPerDay ? "on" : ""}" data-pace="${n}"><b>${n}</b><span>≈ ${paceMinutes(n)} min/j</span></button>`).join("")}</div>
     <p class="note">${waiting ? `${plural(waiting, "nouvelle carte")} en attente : environ ${plural(Math.ceil(waiting / state.newPerDay), "jour")} à ce rythme. ` : ""}Temps estimé par jour une fois le rythme installé. Le bouton « Étudier maintenant » d'une fiche ignore cette limite.</p>
+    <h4 class="section-title">${icon("list")}Façon de répondre</h4>
+    <div class="mode-list">${ANSWER_MODES.map(([id, t, sub]) => `<button class="opt mode ${state.answerMode === id ? "on" : ""}" data-mode="${id}"><b>${t}</b><span>${sub}</span></button>`).join("")}</div>
     <h4 class="section-title">${icon("layers")}Cartes par fiche</h4>
     <div class="opts two">
       <button class="opt ${state.scope === "core" ? "on" : ""}" data-scope="core"><b>Essentiel</b><span>${FICHES.reduce((n, f) => n + f.cards.filter((c) => c.core).length, 0)} cartes · fiche-mémoire, jury, angles morts</span></button>
@@ -898,6 +990,7 @@ function profile() {
   root.querySelector("#exam").onchange = (e) => { state.exam = e.target.value || null; save(); keepScroll(); };
   root.querySelector("#noexam")?.addEventListener("click", () => { state.exam = null; save(); keepScroll(); });
   root.querySelectorAll("[data-pace]").forEach((b) => (b.onclick = () => { state.newPerDay = +b.dataset.pace; save(); buzz(15); keepScroll(); }));
+  root.querySelectorAll("[data-mode]").forEach((b) => (b.onclick = () => { state.answerMode = b.dataset.mode; save(); buzz(15); keepScroll(); }));
   root.querySelectorAll("[data-scope]").forEach((b) => (b.onclick = () => { state.scope = b.dataset.scope; save(); buzz(15); keepScroll(); }));
   root.querySelector("#export").onclick = async () => { await exportProgress(); profile(); };
   const file = root.querySelector("#import-file");

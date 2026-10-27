@@ -11,6 +11,13 @@ calcule la date de la prochaine révision.
 | **Difficile** | augmente peu (× 1,2, au moins + 1 jour) | 3 j → 4 j |
 | **Oublié** | retombe à 1 jour (et la carte revient plus tard dans la séance) | 3 j → 1 j |
 
+Deux façons de répondre (Profil → Façon de répondre) :
+- **QCM** : quatre propositions, les mauvaises venant d'autres cartes du même type (une autre portée d'arrêt, une autre
+  définition), si possible de la même fiche ; une portée d'arrêt est parfois posée à l'envers (retrouver la décision).
+  Bonne réponse → tu choisis *Difficile* (hésitation) ou *Facile* ; mauvaise réponse → *Oublié*.
+- **Rappel libre** : tu cherches seul, tu révèles la réponse, puis tu choisis *Facile*, *Difficile* ou *Oublié*.
+- **Progressif** (par défaut) : QCM tant que la carte revient à moins de 8 jours, puis rappel libre.
+
 Première rencontre : *Facile* → 3 jours, sinon demain. Avec la date du Grand Oral renseignée, aucune carte n'est programmée après la veille de l'épreuve.
 Détails : [docs/architecture.md](docs/architecture.md). Vérification : `node tools/check_srs.mjs`.
 

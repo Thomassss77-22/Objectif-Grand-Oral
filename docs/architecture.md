@@ -36,3 +36,10 @@ Types de cartes tirées des fiches (`k`) : `ref` (portée d'une décision), `def
 
 Nouvelles cartes : « Étudier maintenant » sur une fiche les présente tout de suite ; « Ajouter à mes révisions » les met
 en file, introduites au rythme choisi (30 par jour par défaut).
+
+## QCM (`qcmFor` dans `app.js`)
+Proposition juste : première phrase de la réponse (sans couper après une abréviation : « art. », « n° »…), 170 caractères au plus ;
+pour un plan, les titres des deux parties. Trois mauvaises propositions tirées d'autres cartes du même type : même fiche,
+puis même partie, puis tout le programme (jury : même chapitre ; 500 questions : même section). Une carte « Portée de : décision »
+est posée à l'envers une fois sur deux (retrouver la décision), uniquement si l'intitulé est bien une décision de justice.
+Mode `state.answerMode` : `auto` (QCM si l'intervalle est inférieur à 8 jours), `qcm`, `recall`. L'entretien chronométré reste en rappel libre.
