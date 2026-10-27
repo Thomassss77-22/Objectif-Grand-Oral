@@ -1,0 +1,8 @@
+{
+  "appId": "fr.objectifgrandoral.app",
+  "appName": "Objectif Grand Oral",
+  "webDir": "app",
+  "ios": {
+    "contentInset": "never"
+  }
+}
