@@ -1,0 +1,20 @@
+{
+  "name": "objectif-grand-oral",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Préparation du Grand Oral du CRFPA par répétition espacée (PWA + application iOS via Capacitor)",
+  "scripts": {
+    "ios": "cap sync ios && cap open ios",
+    "sync": "cap sync ios",
+    "test": "node tools/check_srs.mjs"
+  },
+  "dependencies": {
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/filesystem": "^8.1.5",
+    "@capacitor/ios": "^8.5.3",
+    "@capacitor/share": "^8.0.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.3"
+  }
+}
