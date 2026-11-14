@@ -10,8 +10,7 @@ app/
   app.js                  écrans : programme, fiche, séance, questions, oral, profil
   srs.js                  répétition espacée à trois réponses
   data/cours.json         8 parties, 56 fiches (fiche-mémoire + cartes)
-  data/jury.json          580 questions du jury, en chapitres et sections
-  data/q500.json          500 questions-réponses, en sections
+  data/jury.json          554 questions du jury, en chapitres et sections
   sw.js, manifest.json    hors ligne et installation
 tools/
   build_cards.py          compile les documents de « Grand Oral/ » vers app/data/
@@ -21,7 +20,7 @@ tools/
 
 ## Cartes
 `{ id, k, q, a, ctx, core? }` pour le cours (`a` en HTML : `<b>` gras, `<i class="t|j|d">` textes, jurisprudence, doctrine) ;
-`{ id, num, lv, who, q, a, cite }` pour le jury ; `{ id, num, q, a, upd? }` pour les 500 questions.
+`{ id, num, lv, who, q, a, cite }` pour le jury.
 
 Types de cartes tirées des fiches (`k`) : `ref` (portée d'une décision), `def`, `plan`, `jury` (relances), `qr` (angles morts),
 `texte`, `doct`, `notion`. `core` marque la fiche-mémoire et le dispositif « Grand Oral ».
