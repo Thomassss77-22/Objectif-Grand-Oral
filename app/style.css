@@ -65,7 +65,6 @@
 [data-lv="VII"] { --lv: #047857; --lv-2: #4d7c0f; }
 [data-lv="VIII"] { --lv: #a16207; --lv-2: #c2410c; }
 [data-lv="jury"] { --lv: #1b2a63; --lv-2: #7a5cc7; }
-[data-lv="q500"] { --lv: #0e7490; --lv-2: #4338ca; }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; }

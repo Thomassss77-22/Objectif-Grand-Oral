@@ -82,8 +82,8 @@ function importProgress(file, after) {
 
 // ---------- Contenu ----------
 // cours.json : 8 parties, 56 fiches (fiche-mémoire + cartes) ; jury.json : 580 questions du jury ;
-// q500.json : 500 questions-réponses. Toutes les cartes sont indexées par identifiant dans CARDS.
-let PARTS = [], FICHES = [], JURY = [], Q500 = [];
+// Toutes les cartes sont indexées par identifiant dans CARDS.
+let PARTS = [], FICHES = [], JURY = [];
 const CARDS = new Map();
 const KINDS = {
   ref: "Portée d'une décision", qr: "Angle mort", jury: "Relance du jury", plan: "Plan d'exposé",
@@ -91,11 +91,10 @@ const KINDS = {
 };
 async function loadData() {
   const get = async (f) => (await fetch(`data/${f}.json`)).json();
-  const [cours, jury, q500] = await Promise.all([get("cours"), get("jury"), get("q500")]);
+  const [cours, jury] = await Promise.all([get("cours"), get("jury")]);
   PARTS = cours.parts;
   FICHES = cours.fiches;
   JURY = jury.chapters;
-  Q500 = q500.sections;
   const partOf = {};
   for (const p of PARTS) for (const n of p.fiches) partOf[n] = p.id;
   for (const f of FICHES) {
@@ -105,9 +104,6 @@ async function loadData() {
   JURY.forEach((ch, i) => ch.sections.forEach((s) => s.cards.forEach((c) => CARDS.set(c.id, {
     ...c, src: "jury", level: c.lv, lv: "jury", chapter: i, label: `Question du jury · ${c.lv}`, ctx: `${ch.title} · ${s.title} · Q${c.num} · ${c.who}`,
   }))));
-  Q500.forEach((s, i) => s.cards.forEach((c) => CARDS.set(c.id, {
-    ...c, src: "q500", lv: "q500", section: i, label: "500 questions", ctx: `${s.title} · n° ${c.num}`,
-  })));
 }
 
 const ficheCards = (f) => f.cards.filter((c) => state.scope === "all" || c.core).map((c) => c.id);
@@ -530,21 +526,20 @@ function reviewTab() {
   root.querySelector("#go").onclick = () => session(queue, { title: "Révision", back: home });
 }
 
-// ---------- Questions : jury, 500 questions, recherche ----------
+// ---------- Questions : jury, recherche ----------
 let bankView = "jury";
 let lvFilter = null;
 function bankTabs() {
   const chip = (id, label) => `<button class="fchip ${bankView === id ? "on" : ""}" data-view="${id}">${label}</button>`;
-  return `<div class="chips">${chip("jury", "Jury · 580")}${chip("q500", "500 questions")}${chip("search", `${icon("search")} Rechercher`)}</div>`;
+  return `<div class="chips">${chip("jury", `Jury · ${JURY.reduce((n, ch) => n + ch.sections.reduce((m, x) => m + x.cards.length, 0), 0)}`)}${chip("search", `${icon("search")} Rechercher`)}</div>`;
 }
 function bindBankTabs() {
   root.querySelectorAll("[data-view]").forEach((b) => (b.onclick = () => { bankView = b.dataset.view; bank(); }));
 }
 function bank() {
   if (bankView === "search") return searchView();
-  const groups = bankView === "jury"
-    ? JURY.map((ch, i) => ({ i, title: ch.title, ids: ch.sections.flatMap((s) => s.cards.map((c) => c.id)) }))
-    : Q500.map((s, i) => ({ i, title: s.title, ids: s.cards.map((c) => c.id) }));
+  bankView = "jury";
+  const groups = JURY.map((ch, i) => ({ i, title: ch.title, ids: ch.sections.flatMap((s) => s.cards.map((c) => c.id)) }));
   const rows = groups.map((g) => `<button class="bank-row" data-lv="${bankView}" data-i="${g.i}">
       <span class="f-num">${bankView === "jury" ? g.i + 1 : g.ids.length}</span>
       <span class="f-txt"><b>${esc(g.title)}</b><small>${plural(g.ids.length, "question")} · ${countSeen(g.ids)} étudiée${countSeen(g.ids) > 1 ? "s" : ""}</small></span>
@@ -553,13 +548,11 @@ function bank() {
     ${topbar()}
     <div class="screen-title"><h1>Questions</h1></div>
     ${bankTabs()}
-    <p class="lead">${bankView === "jury"
-      ? "Banque de 580 questions du jury (IEJ de Toulouse, état du droit au 3 octobre 2026) avec éléments de réponse et références à citer."
-      : "Fiche 500 questions-réponses (PréBarreau, éd. 2025). Les réponses datées (personnalités, chiffres) sont remplacées par la mise à jour du 22 octobre 2026."}</p>
+    <p class="lead">Banque de ${groups.reduce((n, g) => n + g.ids.length, 0)} questions du jury, classées par niveau, avec éléments de réponse et références à citer. État du droit au 3 octobre 2026.</p>
     <div class="bank-list">${rows}</div>
   `, { nav: "bank" });
   bindBankTabs();
-  root.querySelectorAll(".bank-row").forEach((b) => (b.onclick = () => (bankView === "jury" ? juryChapter(+b.dataset.i) : q500Section(+b.dataset.i))));
+  root.querySelectorAll(".bank-row").forEach((b) => (b.onclick = () => juryChapter(+b.dataset.i)));
 }
 
 function qrow(id) {
@@ -567,7 +560,7 @@ function qrow(id) {
   const inDeck = Boolean(state.deck[id]);
   return `<div class="qrow" data-id="${id}">
     <div class="qrow-head">
-      <div><small>${c.src === "jury" ? `<span class="lvtag ${c.level}">${c.level}</span>Q${c.num} · ${esc(c.who)}` : c.src === "q500" ? `n° ${c.num}` : esc(c.label)}</small>
+      <div><small>${c.src === "jury" ? `<span class="lvtag ${c.level}">${c.level}</span>Q${c.num} · ${esc(c.who)}` : esc(c.label)}</small>
         <b>${esc(c.q)}</b></div>
       <button class="add ${inDeck ? "on" : ""}" aria-label="${inDeck ? "Dans mes révisions" : "Ajouter à mes révisions"}">${icon(inDeck ? "check" : "plus")}</button>
     </div>
@@ -632,10 +625,6 @@ function juryChapter(i) {
   });
   root.querySelectorAll("[data-f]").forEach((b) => (b.onclick = () => { lvFilter = b.dataset.f || null; juryChapter(i); }));
 }
-function q500Section(i) {
-  const s = Q500[i];
-  groupScreen({ title: s.title, sub: "500 questions · PréBarreau", lv: "q500", back: bank, sections: [{ title: "", ids: s.cards.map((c) => c.id) }] });
-}
 
 let searchText = "";
 let searchIndex = null;
@@ -653,7 +642,7 @@ function searchView() {
     searchText = input.value;
     const box = root.querySelector("#results");
     const words = fold(searchText).split(/\s+/).filter((w) => w.length > 1);
-    if (!words.length) { box.innerHTML = `<p class="lead" style="margin-top:14px">Cherche dans les ${CARDS.size.toLocaleString("fr-FR")} cartes : cours, questions du jury et 500 questions.</p>`; return; }
+    if (!words.length) { box.innerHTML = `<p class="lead" style="margin-top:14px">Cherche dans les ${CARDS.size.toLocaleString("fr-FR")} cartes : cours et questions du jury.</p>`; return; }
     searchIndex ||= [...CARDS.values()].map((c) => [c.id, fold(c.q), fold(stripTags(c.a) + " " + (c.cite || "") + " " + (c.ctx || ""))]);
     const scored = [];
     for (const [id, q, a] of searchIndex) {
@@ -891,7 +880,7 @@ function profile() {
         <input type="file" id="import-file" accept=".json,application/json" hidden>
       </div>
     </div>
-    <p class="sources">Sources : fascicule Objectif Barreau « Libertés publiques et droits fondamentaux » 2026 et fiches de révision par partie ; banque de questions du jury (IEJ de Toulouse, oct. 2026) ; fiche 500 questions-réponses PréBarreau 2025 et sa mise à jour d'octobre 2026. Les noms des titulaires de fonctions et les chiffres sont à revérifier la veille de l'épreuve.</p>
+    <p class="sources">Les noms des titulaires de fonctions et les chiffres sont à revérifier la veille de l'épreuve.</p>
     <button class="link-danger" id="reset">Réinitialiser ma progression</button>
   `, { nav: "profile" });
   const keepScroll = () => { const y = window.scrollY; profile(); window.scrollTo(0, y); };
