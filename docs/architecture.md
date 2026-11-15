@@ -10,7 +10,7 @@ app/
   app.js                  écrans : programme, fiche, séance, questions, oral, profil
   srs.js                  répétition espacée à trois réponses
   data/cours.json         8 parties, 56 fiches (fiche-mémoire + cartes)
-  data/jury.json          554 questions du jury, en chapitres et sections
+  data/jury.json          604 questions du jury, en chapitres et sections
   sw.js, manifest.json    hors ligne et installation
 tools/
   build_cards.py          compile les documents de « Grand Oral/ » vers app/data/

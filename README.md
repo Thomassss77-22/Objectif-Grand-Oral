@@ -26,7 +26,7 @@ Ouvre http://localhost:8000. Sur mobile : menu du navigateur → « Ajouter à l
   deux plans, trois pièges, sujets d'exposé) avec le code couleur (textes en bleu, jurisprudence en rose, doctrine en vert,
   gras à réciter), et donne ses cartes : portée des décisions, définitions, plans, relances du jury, angles morts, textes, doctrine.
   *Essentiel* : fiche-mémoire et dispositif « Grand Oral » ; *Complet* : avec le dossier détaillé.
-- **Questions** : banque de 554 questions du jury (niveaux Base, Approfondi, Piège). Recherche dans toutes les cartes.
+- **Questions** : banque de 604 questions du jury (niveaux Base, Approfondi, Piège). Recherche dans toutes les cartes.
 - **Oral** : entretien express (10 questions du jury, 1 min chacune), questions pièges, tirage d'un sujet d'exposé
   avec chronomètre (1 h de préparation, 15 min d'exposé, enregistrement facultatif) puis entretien.
 - **Profil** : date du Grand Oral (compte à rebours), nouvelles cartes par jour (10 à 80), essentiel ou complet,

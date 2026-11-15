@@ -18,6 +18,14 @@ function save() {
   try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
 }
 
+// ---------- Lien avec l'espace candidat ----------
+// L'espace ouvre l'application avec ?de=espace&ouvrir=<onglet> ; on retient d'où l'on vient pour proposer le retour.
+const params = new URLSearchParams(location.search);
+if (params.get("de") === "espace") { try { sessionStorage.setItem("de-espace", "1"); } catch {} }
+const fromEspace = () => { try { return sessionStorage.getItem("de-espace") === "1"; } catch { return false; } };
+const backLink = () => (fromEspace() ? `<a href="../espace/" aria-label="Retour à mon espace" title="Retour à mon espace" style="display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:12px;background:var(--surface);color:var(--fg);text-decoration:none;font-weight:800;box-shadow:var(--shadow-sm)">←</a>` : "");
+
+
 const dayKey = (t = Date.now()) => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 function addXp(n) {
   state.xp += n;
@@ -207,7 +215,7 @@ const examPill = () => {
 };
 const topbar = () => `
   <header class="topbar">
-    <div class="brand"><img class="logo" src="icons/logo-mark.png" alt=""><span class="brand-name">Objectif Grand Oral</span></div>
+    <div class="brand">${backLink()}<img class="logo" src="icons/logo-mark.png" alt=""><span class="brand-name">Objectif Grand Oral</span></div>
     <div class="pills">
       ${examPill()}
       <span class="pill" title="Série">${icon("flame", "flame")}${liveStreak()}</span>
@@ -286,7 +294,7 @@ function pathSection(next) {
   const doneF = (f) => countSeen(ficheCards(f)) === ficheCards(f).length;
   const tabs = PARTS.map((p) => {
     const full = fichesOf(p).every(doneF);
-    return `<button class="lv-tab ${p.id === part.id ? "on" : ""}" data-lv="${p.id}" data-pick="${p.id}">${full ? icon("check") : ""}${p.id}</button>`;
+    return `<button role="tab" aria-selected="${p.id === part.id}" aria-label="Partie ${p.id}" class="lv-tab ${p.id === part.id ? "on" : ""}" data-lv="${p.id}" data-pick="${p.id}">${full ? icon("check") : ""}${p.id}</button>`;
   }).join("");
   const list = fichesOf(part);
   const nDone = list.filter(doneF).length;
@@ -834,7 +842,7 @@ function profile() {
       <div><h1>Ma préparation</h1><p>${left !== null && left >= 0 ? `Grand Oral le ${new Date(state.exam + "T12:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}` : "Libertés et droits fondamentaux"}</p></div>
     </div>
     <h4 class="section-title">${icon("calendar")}Date du Grand Oral</h4>
-    <div class="date-row"><input type="date" id="exam" value="${state.exam || ""}">${state.exam ? `<button class="icon-btn" id="noexam" aria-label="Effacer">${icon("x")}</button>` : ""}</div>
+    <div class="date-row"><input type="date" id="exam" aria-label="Date de ton Grand Oral" value="${state.exam || ""}">${state.exam ? `<button class="icon-btn" id="noexam" aria-label="Effacer">${icon("x")}</button>` : ""}</div>
     <p class="note">Aucune carte ne sera programmée après la veille de l'épreuve : tout ce que tu as appris sera revu au moins une fois avant.</p>
     <h4 class="section-title">${icon("cards")}Nouvelles cartes par jour</h4>
     <div class="opts">${PACES.map((n) => `<button class="opt ${n === state.newPerDay ? "on" : ""}" data-pace="${n}"><b>${n}</b><span>≈ ${paceMinutes(n)} min/j</span></button>`).join("")}</div>
@@ -902,6 +910,10 @@ function profile() {
 
 const TABS = { home, bank, review: reviewTab, oral, profile };
 loadData()
-  .then(home)
+  .then(() => {
+    const tab = params.get("ouvrir");
+    if (params.has("de")) history.replaceState(null, "", location.pathname);
+    (Object.hasOwn(TABS, tab) ? TABS[tab] : home)();
+  })
   .catch(() => { root.innerHTML = `<main id="view"><div class="empty"><h2>Contenu introuvable</h2><p>Les fichiers de cartes (data/) n'ont pas pu être chargés. Lance l'application depuis un serveur local : <code>cd app && python3 -m http.server 8000</code>.</p></div></main>`; });
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
