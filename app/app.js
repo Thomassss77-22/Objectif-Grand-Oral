@@ -1,8 +1,13 @@
 import { newCard, review, nextInterval, isNew, dueCards, daysUntil, GRADES, MAX_DAYS } from "./srs.js";
+import { json as contenuJson, porte, indisponible, verrou, compte } from "./contenu.js";
 
 const KEY = "objectif-grand-oral-v1";
 const DAILY_GOAL = 40; // XP par jour (1 XP par carte, 2 si « Facile »)
 const root = document.getElementById("app");
+
+// La porte vérifie le compte quand le site en exige un ; puis on reprend la progression la plus récente.
+await porte(root);
+if (verrou) await compte.tirer(KEY);
 
 // ---------- État ----------
 function load() {
@@ -16,6 +21,7 @@ const DEFAULTS = () => ({ deck: {}, xp: 0, streak: 0, lastDay: null, days: {}, n
 const state = Object.assign(DEFAULTS(), load());
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
+  if (verrou) compte.pousserBientot(KEY);
 }
 
 // ---------- Lien avec l'espace candidat ----------
@@ -98,7 +104,7 @@ const KINDS = {
   def: "Définition", doct: "Doctrine", texte: "Texte", notion: "Notion",
 };
 async function loadData() {
-  const get = async (f) => (await fetch(`data/${f}.json`)).json();
+  const get = (f) => contenuJson(`data/${f}.json`);
   const [cours, jury] = await Promise.all([get("cours"), get("jury")]);
   PARTS = cours.parts;
   FICHES = cours.fiches;
@@ -915,5 +921,5 @@ loadData()
     if (params.has("de")) history.replaceState(null, "", location.pathname);
     (Object.hasOwn(TABS, tab) ? TABS[tab] : home)();
   })
-  .catch(() => { root.innerHTML = `<main id="view"><div class="empty"><h2>Contenu introuvable</h2><p>Les fichiers de cartes (data/) n'ont pas pu être chargés. Lance l'application depuis un serveur local : <code>cd app && python3 -m http.server 8000</code>.</p></div></main>`; });
+  .catch((e) => { if (verrou) return indisponible(root); root.innerHTML = `<main id="view"><div class="empty"><h2>Contenu introuvable</h2><p>Les fichiers de cartes (data/) n'ont pas pu être chargés. Lance l'application depuis un serveur local : <code>cd app && python3 -m http.server 8000</code>.</p></div></main>`; });
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
