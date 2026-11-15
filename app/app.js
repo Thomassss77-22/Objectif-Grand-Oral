@@ -286,7 +286,7 @@ function pathSection(next) {
   const doneF = (f) => countSeen(ficheCards(f)) === ficheCards(f).length;
   const tabs = PARTS.map((p) => {
     const full = fichesOf(p).every(doneF);
-    return `<button class="lv-tab ${p.id === part.id ? "on" : ""}" data-lv="${p.id}" data-pick="${p.id}">${full ? icon("check") : ""}${p.id}</button>`;
+    return `<button role="tab" aria-selected="${p.id === part.id}" aria-label="Partie ${p.id}" class="lv-tab ${p.id === part.id ? "on" : ""}" data-lv="${p.id}" data-pick="${p.id}">${full ? icon("check") : ""}${p.id}</button>`;
   }).join("");
   const list = fichesOf(part);
   const nDone = list.filter(doneF).length;
@@ -834,7 +834,7 @@ function profile() {
       <div><h1>Ma préparation</h1><p>${left !== null && left >= 0 ? `Grand Oral le ${new Date(state.exam + "T12:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}` : "Libertés et droits fondamentaux"}</p></div>
     </div>
     <h4 class="section-title">${icon("calendar")}Date du Grand Oral</h4>
-    <div class="date-row"><input type="date" id="exam" value="${state.exam || ""}">${state.exam ? `<button class="icon-btn" id="noexam" aria-label="Effacer">${icon("x")}</button>` : ""}</div>
+    <div class="date-row"><input type="date" id="exam" aria-label="Date de ton Grand Oral" value="${state.exam || ""}">${state.exam ? `<button class="icon-btn" id="noexam" aria-label="Effacer">${icon("x")}</button>` : ""}</div>
     <p class="note">Aucune carte ne sera programmée après la veille de l'épreuve : tout ce que tu as appris sera revu au moins une fois avant.</p>
     <h4 class="section-title">${icon("cards")}Nouvelles cartes par jour</h4>
     <div class="opts">${PACES.map((n) => `<button class="opt ${n === state.newPerDay ? "on" : ""}" data-pace="${n}"><b>${n}</b><span>≈ ${paceMinutes(n)} min/j</span></button>`).join("")}</div>
