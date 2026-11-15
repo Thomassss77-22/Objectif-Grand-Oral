@@ -18,6 +18,14 @@ function save() {
   try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
 }
 
+// ---------- Lien avec l'espace candidat ----------
+// L'espace ouvre l'application avec ?de=espace&ouvrir=<onglet> ; on retient d'où l'on vient pour proposer le retour.
+const params = new URLSearchParams(location.search);
+if (params.get("de") === "espace") { try { sessionStorage.setItem("de-espace", "1"); } catch {} }
+const fromEspace = () => { try { return sessionStorage.getItem("de-espace") === "1"; } catch { return false; } };
+const backLink = () => (fromEspace() ? `<a href="../espace/" aria-label="Retour à mon espace" title="Retour à mon espace" style="display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:12px;background:var(--surface);color:var(--fg);text-decoration:none;font-weight:800;box-shadow:var(--shadow-sm)">←</a>` : "");
+
+
 const dayKey = (t = Date.now()) => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 function addXp(n) {
   state.xp += n;
@@ -207,7 +215,7 @@ const examPill = () => {
 };
 const topbar = () => `
   <header class="topbar">
-    <div class="brand"><img class="logo" src="icons/logo-mark.png" alt=""><span class="brand-name">Objectif Grand Oral</span></div>
+    <div class="brand">${backLink()}<img class="logo" src="icons/logo-mark.png" alt=""><span class="brand-name">Objectif Grand Oral</span></div>
     <div class="pills">
       ${examPill()}
       <span class="pill" title="Série">${icon("flame", "flame")}${liveStreak()}</span>
@@ -902,6 +910,10 @@ function profile() {
 
 const TABS = { home, bank, review: reviewTab, oral, profile };
 loadData()
-  .then(home)
+  .then(() => {
+    const tab = params.get("ouvrir");
+    if (params.has("de")) history.replaceState(null, "", location.pathname);
+    (Object.hasOwn(TABS, tab) ? TABS[tab] : home)();
+  })
   .catch(() => { root.innerHTML = `<main id="view"><div class="empty"><h2>Contenu introuvable</h2><p>Les fichiers de cartes (data/) n'ont pas pu être chargés. Lance l'application depuis un serveur local : <code>cd app && python3 -m http.server 8000</code>.</p></div></main>`; });
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
